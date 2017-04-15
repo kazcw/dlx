@@ -40,7 +40,7 @@ int dlx_pick_row(dlx_t dlx, int row);
 // Runs the DLX algorithm, and for every exact cover, calls the given callback
 // with an array containing all the row numbers of the solution and the size of
 // said array.
-void dlx_forall_cover(dlx_t dlx, void (*cb)(int rows[], int n));
+void dlx_forall_cover(dlx_t dlx, int (*cb)(int rows[], int n));
 
 // Runs the DLX algorithm, calling the appropriate callback when:
 //
@@ -56,5 +56,5 @@ void dlx_forall_cover(dlx_t dlx, void (*cb)(int rows[], int n));
 void dlx_solve(dlx_t dlx,
                void (*cover_cb)(int col, int s, int row),
                void (*uncover_cb)(),
-               void (*found_cb)(),
+               int (*found_cb)(),
                void (*stuck_cb)(int col));

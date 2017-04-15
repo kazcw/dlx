@@ -54,6 +54,7 @@ struct dlx_s {
   int ctabn, rtabn, ctab_alloc, rtab_alloc;
   cell_ptr *ctab, *rtab;
   cell_ptr root;
+  int shutdown;
 };
 typedef struct dlx_s *dlx_t;
 
@@ -64,6 +65,7 @@ dlx_t dlx_new() {
   p->ctab = malloc(sizeof(cell_ptr) * p->ctab_alloc);
   p->rtab = malloc(sizeof(cell_ptr) * p->rtab_alloc);
   p->root = LR_self(col_new());
+  p->shutdown = 0;
   return p;
 }
 
@@ -183,12 +185,15 @@ int dlx_remove_row(dlx_t p, int i) {
 void dlx_solve(dlx_t p,
                void (*try_cb)(int, int, int),
                void (*undo_cb)(void),
-               void (*found_cb)(),
+               int (*found_cb)(),
                void (*stuck_cb)()) {
   void recurse() {
+    if (p->shutdown) return;
     cell_ptr c = p->root->R;
     if (c == p->root) {
-      if (found_cb) found_cb();
+      if (found_cb) {
+	if (found_cb()) p->shutdown = 1;
+      }
       return;
     }
     int s = INT_MAX;  // S-heuristic: choose first most-constrained column.
@@ -202,6 +207,7 @@ void dlx_solve(dlx_t p,
       if (try_cb) try_cb(c->n, s, r->n);
       C(j, r, R) cover_col(j->c);
       recurse();
+      if (p->shutdown) return;
       if (undo_cb) undo_cb();
       C(j, r, L) uncover_col(j->c);
     }
@@ -210,10 +216,10 @@ void dlx_solve(dlx_t p,
   recurse();
 }
 
-void dlx_forall_cover(dlx_t p, void (*cb)(int[], int)) {
+void dlx_forall_cover(dlx_t p, int (*cb)(int[], int)) {
   int sol[p->rtabn], soln = 0;
   void cover(int c, int s, int r) { sol[soln++] = r; }
   void uncover() { soln--; }
-  void found() { cb(sol, soln); }
+  int found() { return cb(sol, soln); }
   dlx_solve(p, cover, uncover, found, NULL);
 }
